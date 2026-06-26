@@ -1,3 +1,4 @@
+#include "app.h"
 #include "audio.h"
 #include "util_math.h"
 #include <math.h>
@@ -12,25 +13,79 @@ static float clampf_nz(float value, float min, float max)
     }
     return value;
 }
-void audio_init(audio_t *audio, rnd_t *rnd)
+static float distortion_curve(float sample, float drive)
+{
+    float shaped = sample * drive;
+    return tanhf(shaped) * (1.0f / tanhf(drive));
+}
+static void audio_callback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount)
+{
+    (void)total_amount;
+    static int debug_count = 0;
+    if (!userdata) {
+        SDL_Log("audio_callback: missing userdata\n");
+        return;
+    }
+    audio_t *audio = userdata;
+    if (debug_count < 10) {
+        SDL_Log("audio_callback[%d]: userdata=%p expected=%p rnd_state=0x%016llx stream=%p add=%d tot=%d\n",
+                debug_count, userdata, (void *)&app.audio, (unsigned long long)audio->rnd.state, (void *)stream, additional_amount, total_amount);
+    }
+    debug_count += 1;
+    int frames = additional_amount / sizeof(float);
+    if (frames <= 0) {
+        return;
+    }
+    if (frames > 1024) {
+        frames = 1024;
+    }
+    float buffer[1024];
+    for (int i = 0; i < frames; i++) {
+        float carrier = sinf(audio->phase);
+        float formant = sinf(audio->phase * 0.99f + audio->energy * 3.7f);
+        float noise = (rnd_f(&audio->rnd) * 2.0f - 1.0f) * 0.08f * audio->energy;
+        float raw = carrier * (0.42f + audio->energy * 0.33f) + formant * 0.14f + noise;
+        float shaped = distortion_curve(raw + audio->feedback * 0.26f, 1.0f + audio->energy * 3.2f);
+        audio->feedback = shaped * (0.12f + audio->energy * 0.24f);
+        float level = (0.07f + audio->energy * 0.20f) * (0.8f + 0.2f * cosf(audio->phase * 0.31f));
+        buffer[i] = shaped * level;
+        audio->phase += 2.0f * 3.14159265f * audio->frequency / audio->sample_rate;
+        if (audio->phase >= 2.0f * 3.14159265f) {
+            audio->phase -= 2.0f * 3.14159265f;
+        }
+    }
+    SDL_PutAudioStreamData(stream, buffer, frames * sizeof(float));
+}
+void audio_init(audio_t *audio, const rnd_t *rnd)
 {
     memset(audio, 0, sizeof(*audio));
-    audio->rnd = rnd;
-    audio->phase = rnd_f(rnd) * 6.2831855f;
-    audio->frequency = 110.0f + rnd_f(rnd) * 120.0f;
-    audio->amplitude = 0.18f + rnd_f(rnd) * 0.22f;
+    audio->rnd = *rnd;
+    audio->phase = rnd_f(&audio->rnd) * 2.0f * 3.14159265f;
+    audio->frequency = 120.0f + rnd_f(&audio->rnd) * 140.0f;
+    audio->amplitude = 0.12f + rnd_f(&audio->rnd) * 0.18f;
     audio->energy = 0.0f;
+    audio->distortion = 0.28f;
+    audio->feedback = 0.0f;
+    audio->sample_rate = 48000.0f;
+    SDL_AudioSpec spec;
+    SDL_zero(spec);
+    spec.format = SDL_AUDIO_F32;
+    spec.channels = 1;
+    spec.freq = (int)audio->sample_rate;
+    audio->stream = SDL_OpenAudioDeviceStream(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec, audio_callback, audio);
+    SDL_Log("audio_init: app.audio=%p stream=%p rnd_state=0x%016llx\n", (void *)audio, (void *)audio->stream, (unsigned long long)audio->rnd.state);
+    if (audio->stream) {
+        SDL_ResumeAudioStreamDevice(audio->stream);
+    }
 }
 void audio_update(audio_t *audio, float activity, float dt)
 {
     const float target = clampf_nz(activity, 0.0f, 1.0f);
-    const float smooth = 0.96f;
-    audio->energy = mixf(audio->energy, target, 1.0f - smooth);
-    audio->frequency += (0.5f - rnd_f(audio->rnd)) * 6.0f * dt;
-    audio->frequency = clampf_nz(audio->frequency, 80.0f, 480.0f);
-    audio->phase += audio->frequency * dt * (1.0f + audio->energy * 2.0f);
-    audio->phase = fmodf(audio->phase, 6.2831855f);
-    audio->amplitude = mixf(audio->amplitude, 0.24f + audio->energy * 0.34f, 0.08f);
+    audio->energy = mixf(audio->energy, target, 1.0f - powf(0.18f, dt * 60.0f));
+    float freq_target = 120.0f + target * 720.0f + sinf(audio->phase * 0.014f) * 24.0f;
+    audio->frequency = mixf(audio->frequency, clampf_nz(freq_target, 80.0f, 1600.0f), 0.08f);
+    audio->distortion = mixf(audio->distortion, 0.22f + target * 0.72f, 0.06f);
+    audio->amplitude = mixf(audio->amplitude, 0.06f + target * 0.28f, 0.07f);
 }
 float audio_energy(const audio_t *audio)
 {
@@ -38,5 +93,8 @@ float audio_energy(const audio_t *audio)
 }
 void audio_cleanup(audio_t *audio)
 {
-    (void)audio;
+    if (audio->stream) {
+        SDL_DestroyAudioStream(audio->stream);
+        audio->stream = NULL;
+    }
 }
