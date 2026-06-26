@@ -27,7 +27,7 @@
         devShell = pkgs.mkShell {
           buildInputs = [ pkgs.cmake pkgs.clang pkgs.pkg-config pkgs.sdl3 ];
           shellHook = ''
-            echo "ZnVja29mZg dev shell ready"
+            echo "fuckoff"
           '';
         };
       });
