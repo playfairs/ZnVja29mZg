@@ -41,10 +41,10 @@ static uint32_t app_tint(uint32_t color, float amount)
     uint8_t g = (color >> 16) & 0xFF;
     uint8_t b = (color >> 8) & 0xFF;
     uint8_t a8 = color & 0xFF;
-    float pulse = 0.6f + 0.6f * sinf(app.time * 12.0f);
+    float pulse = 0.6f + 0.6f * sinf(app.time * 12.0f + audio_energy(&app.audio) * 4.5f);
     float rr = clampf(r * amount * pulse + 64.0f, 0.0f, 255.0f);
-    float gg = clampf(g * amount * (1.0f + 0.6f * cosf(app.time * 8.3f)) + 28.0f, 0.0f, 255.0f);
-    float bb = clampf(b * amount * (0.85f + 0.7f * sinf(app.time * 9.1f)) + 44.0f, 0.0f, 255.0f);
+    float gg = clampf(g * amount * (1.0f + 0.6f * cosf(app.time * 8.3f + audio_energy(&app.audio) * 2.0f)) + 28.0f, 0.0f, 255.0f);
+    float bb = clampf(b * amount * (0.85f + 0.7f * sinf(app.time * 9.1f + audio_energy(&app.audio) * 3.5f)) + 44.0f, 0.0f, 255.0f);
     return app_pack((uint8_t)rr, (uint8_t)gg, (uint8_t)bb, a8);
 }
 static uint32_t app_glitch(uint32_t color, int index)
@@ -53,7 +53,7 @@ static uint32_t app_glitch(uint32_t color, int index)
     uint8_t g = (color >> 16) & 0xFF;
     uint8_t b = (color >> 8) & 0xFF;
     uint8_t a = color & 0xFF;
-    if (((index + (int)(app.time * 11.0f)) & 31) < 4) {
+    if (((index + (int)(app.time * 11.0f)) & 31) < (4 + (int)(audio_energy(&app.audio) * 3.0f))) {
         uint8_t swap = r;
         r = b;
         b = g;
@@ -63,7 +63,7 @@ static uint32_t app_glitch(uint32_t color, int index)
         r = (uint8_t)(r ^ ((index * 73u) & 0x7F));
         g = (uint8_t)(g ^ ((app.frame * 29u) & 0x8F));
     }
-    if ((((app.frame >> 4) + index) & 63) < 3) {
+    if ((((app.frame >> 4) + index) & 63) < (3 + (int)(audio_energy(&app.audio) * 2.0f))) {
         g = (uint8_t)clampf((float)g * 1.3f + 40.0f, 0.0f, 255.0f);
     }
     return app_pack(r, g, b, a);
@@ -88,8 +88,6 @@ int app_loop(void)
         }
         app.dt = dt;
         app.time += dt;
-        app.palette_t = fractf(app.time * 0.07f);
-        app_fill_palette();
         for (int i = 0; i < app.sys_count; i++) {
             app.systems[i].update(&app);
         }
@@ -97,6 +95,18 @@ int app_loop(void)
         for (int i = 0; i < app.sys_count; i++) {
             app.systems[i].render(&app);
         }
+        float field_energy = 0.0f;
+        int sample_count = 0;
+        for (int y = 0; y < BACK_H; y += 36) {
+            for (int x = 0; x < BACK_W; x += 40) {
+                field_energy += fabsf(app.field[y * BACK_W + x]);
+                sample_count += 1;
+            }
+        }
+        field_energy = clampf(field_energy / (float)sample_count * 0.44f, 0.0f, 1.0f);
+        audio_update(&app.audio, field_energy, dt);
+        app.palette_t = fractf(app.time * 0.07f + audio_energy(&app.audio) * 0.03f);
+        app_fill_palette();
         float row_noise = rnd_f(&app.rnd);
         float color_noise = rnd_f(&app.rnd);
         for (int i = 0; i < BACK_N; i++) {
@@ -105,7 +115,7 @@ int app_loop(void)
             uint32_t base = app.palette[(int)(hue * 4.0f) & 3];
             float adjustment = 1.0f + value * 1.4f + 0.55f * sinf(app.time * 24.0f + (float)(i & 255) * 0.13f);
             uint32_t tinted = app_tint(base, adjustment);
-            if (((i + app.frame) & 15) < 8) {
+            if (((i + app.frame) & 15) < (8 + (int)(audio_energy(&app.audio) * 6.0f))) {
                 uint8_t r = (tinted >> 24) & 0xFF;
                 uint8_t g = (tinted >> 16) & 0xFF;
                 uint8_t b = (tinted >> 8) & 0xFF;
@@ -176,11 +186,12 @@ uint32_t app_pack(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 }
 void app_init(void)
 {
-    SDL_Init(SDL_INIT_VIDEO);
+    SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO);
     app.width = BACK_W * 2;
     app.height = BACK_H * 2;
     app.center = vec2f((float)BACK_W * 0.5f, (float)BACK_H * 0.5f);
     rnd_init(&app.rnd, (uint64_t)SDL_GetPerformanceCounter() ^ 0x9E3779B97F4A7C15ull);
+    audio_init(&app.audio, &app.rnd);
     app.sys_count = 0;
     memset(app.canvas, 0, sizeof(app.canvas));
     memset(app.field, 0, sizeof(app.field));

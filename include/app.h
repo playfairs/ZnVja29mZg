@@ -4,11 +4,13 @@
 #include "vec.h"
 #include "gfx.h"
 #include "rnd.h"
+#include "audio.h"
 #include "sys.h"
 #include "util_math.h"
 #define BACK_W 640
 #define BACK_H 360
 #define BACK_N (BACK_W * BACK_H)
+#define SYS_MAX 32
 typedef struct s0_t { vec2 orbit[4]; float phase[4]; float speed[4]; } s0_t;
 typedef struct s1_t { vec2 pos[6]; vec2 vel[6]; float radius[6]; } s1_t;
 typedef struct s2_t { float feed; float kill; } s2_t;
@@ -28,6 +30,7 @@ typedef struct sF_t { float glow; float pulse; } sF_t;
 typedef struct app_t {
     gfx_t gfx;
     rnd_t rnd;
+    audio_t audio;
     int width;
     int height;
     float time;
@@ -57,7 +60,7 @@ typedef struct app_t {
     sD_t sD;
     sE_t sE;
     sF_t sF;
-    sys_t systems[32];
+    sys_t systems[SYS_MAX];
     int sys_count;
 } app_t;
 extern app_t app;

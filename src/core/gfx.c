@@ -24,7 +24,8 @@ void gfx_present(gfx_t *gfx, uint32_t *pixels, int w, int h)
     SDL_UpdateTexture(gfx->texture, NULL, pixels, w * sizeof(uint32_t));
     SDL_SetRenderDrawColor(gfx->renderer, 0, 0, 0, 255);
     SDL_RenderClear(gfx->renderer);
-    SDL_RenderTexture(gfx->renderer, gfx->texture, NULL, NULL);
+    SDL_FRect dest = {0.0f, 0.0f, (float)w * 2.0f, (float)h * 2.0f};
+    SDL_RenderTexture(gfx->renderer, gfx->texture, NULL, &dest);
     SDL_RenderPresent(gfx->renderer);
 }
 void gfx_cleanup(gfx_t *gfx)
