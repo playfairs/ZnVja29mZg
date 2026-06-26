@@ -1,5 +1,6 @@
 #pragma once
 #include <stdint.h>
+#include <stdbool.h>
 #include <SDL3/SDL.h>
 #include "rnd.h"
 typedef struct {

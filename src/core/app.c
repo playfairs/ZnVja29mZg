@@ -23,17 +23,15 @@ extern sys_t sE_system;
 extern sys_t sF_system;
 static void app_fill_palette(void)
 {
-    float base = fractf(app.time * 0.2f);
-    float noise1 = rnd_f(&app.rnd);
-    float noise2 = rnd_f(&app.rnd);
-    float noise3 = rnd_f(&app.rnd);
-    float t0 = fractf(base * 5.7f + noise1);
-    float t1 = fractf(base * 6.1f + noise2);
-    float t2 = fractf(base * 4.3f + noise3);
-    app.palette[0] = app_pack((uint8_t)clampf(32.0f + 192.0f * noise1, 0.0f, 255.0f), (uint8_t)clampf(8.0f + 220.0f * noise2, 0.0f, 255.0f), (uint8_t)clampf(40.0f + 215.0f * noise3, 0.0f, 255.0f), 255);
-    app.palette[1] = app_pack((uint8_t)clampf(255.0f - 160.0f * t0, 0.0f, 255.0f), (uint8_t)clampf(40.0f + 215.0f * t1, 0.0f, 255.0f), (uint8_t)clampf(24.0f + 220.0f * t2, 0.0f, 255.0f), 255);
-    app.palette[2] = app_pack((uint8_t)clampf(12.0f + 236.0f * t1, 0.0f, 255.0f), (uint8_t)clampf(255.0f - 92.0f * t2, 0.0f, 255.0f), (uint8_t)clampf(36.0f + 220.0f * t0, 0.0f, 255.0f), 255);
-    app.palette[3] = app_pack((uint8_t)clampf(255.0f - 48.0f * t2, 0.0f, 255.0f), (uint8_t)clampf(160.0f + 96.0f * t0, 0.0f, 255.0f), (uint8_t)clampf(16.0f + 240.0f * t1, 0.0f, 255.0f), 255);
+    float base = fractf(app.time * 0.24f + rnd_f(&app.rnd) * 0.16f);
+    float t0 = fractf(base * 4.8f + rnd_f(&app.rnd) * 0.34f);
+    float t1 = fractf(base * 6.2f + rnd_f(&app.rnd) * 0.29f);
+    float t2 = fractf(base * 5.5f + rnd_f(&app.rnd) * 0.43f);
+    float t3 = fractf(base * 3.7f + rnd_f(&app.rnd) * 0.37f);
+    app.palette[0] = app_pack((uint8_t)clampf(32.0f + 220.0f * t0, 0.0f, 255.0f), (uint8_t)clampf(16.0f + 160.0f * t1, 0.0f, 255.0f), (uint8_t)clampf(200.0f - 180.0f * t2, 0.0f, 255.0f), 255);
+    app.palette[1] = app_pack((uint8_t)clampf(255.0f - 180.0f * t1, 0.0f, 255.0f), (uint8_t)clampf(80.0f + 180.0f * t2, 0.0f, 255.0f), (uint8_t)clampf(120.0f + 120.0f * t3, 0.0f, 255.0f), 255);
+    app.palette[2] = app_pack((uint8_t)clampf(64.0f + 200.0f * t3, 0.0f, 255.0f), (uint8_t)clampf(255.0f - 180.0f * t0, 0.0f, 255.0f), (uint8_t)clampf(32.0f + 210.0f * t1, 0.0f, 255.0f), 255);
+    app.palette[3] = app_pack((uint8_t)clampf(255.0f - 100.0f * t2, 0.0f, 255.0f), (uint8_t)clampf(40.0f + 220.0f * t3, 0.0f, 255.0f), (uint8_t)clampf(255.0f - 150.0f * t0, 0.0f, 255.0f), 255);
 }
 static uint32_t app_tint(uint32_t color, float amount)
 {
@@ -53,18 +51,23 @@ static uint32_t app_glitch(uint32_t color, int index)
     uint8_t g = (color >> 16) & 0xFF;
     uint8_t b = (color >> 8) & 0xFF;
     uint8_t a = color & 0xFF;
-    if (((index + (int)(app.time * 11.0f)) & 31) < (4 + (int)(audio_energy(&app.audio) * 3.0f))) {
+    if (((index + (int)(app.time * 13.0f)) & 31) < (5 + (int)(audio_energy(&app.audio) * 4.0f))) {
         uint8_t swap = r;
         r = b;
         b = g;
         g = swap;
     }
-    if ((index ^ app.frame) & 15u) {
-        r = (uint8_t)(r ^ ((index * 73u) & 0x7F));
-        g = (uint8_t)(g ^ ((app.frame * 29u) & 0x8F));
+    if ((index ^ app.frame) & 7u) {
+        r = (uint8_t)(r ^ ((index * 113u) & 0x9F));
+        g = (uint8_t)(g ^ ((app.frame * 37u) & 0xAF));
+        b = (uint8_t)(b ^ ((index * 47u) & 0x7F));
     }
-    if ((((app.frame >> 4) + index) & 63) < (3 + (int)(audio_energy(&app.audio) * 2.0f))) {
-        g = (uint8_t)clampf((float)g * 1.3f + 40.0f, 0.0f, 255.0f);
+    if ((((app.frame >> 3) + index) & 127) < (6 + (int)(audio_energy(&app.audio) * 4.5f))) {
+        g = (uint8_t)clampf((float)g * 1.4f + 52.0f, 0.0f, 255.0f);
+        b = (uint8_t)clampf((float)b * 0.9f + 92.0f, 0.0f, 255.0f);
+    }
+    if (((index * 17u + app.frame) & 63u) < 5u) {
+        r = (uint8_t)clampf(255.0f - (float)r * 0.6f, 0.0f, 255.0f);
     }
     return app_pack(r, g, b, a);
 }
@@ -107,32 +110,61 @@ int app_loop(void)
         audio_update(&app.audio, field_energy, dt);
         app.palette_t = fractf(app.time * 0.07f + audio_energy(&app.audio) * 0.03f);
         app_fill_palette();
-        float row_noise = rnd_f(&app.rnd);
-        float color_noise = rnd_f(&app.rnd);
         for (int i = 0; i < BACK_N; i++) {
-            float value = clampf(app.field[i] * 0.96f + app.field_prev[i] * 0.18f + app.noise[i] * 0.22f + app.cell[i] * 0.18f, -1.0f, 1.0f);
-            float hue = fractf(app.palette_t + value * 0.45f + app.noise[i] * 0.12f + row_noise * 0.3f);
-            uint32_t base = app.palette[(int)(hue * 4.0f) & 3];
-            float adjustment = 1.0f + value * 1.4f + 0.55f * sinf(app.time * 24.0f + (float)(i & 255) * 0.13f);
+            float value = clampf(app.field[i] * (0.6f + rnd_f(&app.rnd) * 1.0f) + app.field_prev[i] * (0.1f + rnd_f(&app.rnd) * 0.7f) + app.noise[i] * (0.2f + rnd_f(&app.rnd) * 0.6f) + app.cell[i] * (0.16f + rnd_f(&app.rnd) * 0.7f), -1.0f, 1.0f);
+            uint32_t base = app.palette[rnd_int(&app.rnd, 4)];
+            float adjustment = 1.0f + value * (1.0f + rnd_f(&app.rnd) * 2.8f) + 0.65f * sinf(app.time * (14.0f + rnd_f(&app.rnd) * 24.0f) + (float)(i & 255) * (0.02f + rnd_f(&app.rnd) * 0.16f));
             uint32_t tinted = app_tint(base, adjustment);
-            if (((i + app.frame) & 15) < (8 + (int)(audio_energy(&app.audio) * 6.0f))) {
+            if (rnd_f(&app.rnd) < 0.4f) {
                 uint8_t r = (tinted >> 24) & 0xFF;
                 uint8_t g = (tinted >> 16) & 0xFF;
                 uint8_t b = (tinted >> 8) & 0xFF;
-                r = (uint8_t)clampf(r * (1.3f + 0.18f * value) + 32.0f + color_noise * 16.0f, 0.0f, 255.0f);
-                g = (uint8_t)clampf(g * (0.78f + 0.48f * value) + 16.0f + row_noise * 24.0f, 0.0f, 255.0f);
-                b = (uint8_t)clampf(b * (1.32f - 0.12f * value) + 32.0f + sinf(row_noise * 13.0f) * 24.0f, 0.0f, 255.0f);
+                r = (uint8_t)clampf(r * (1.2f + 0.6f * value) + rnd_f(&app.rnd) * 120.0f, 0.0f, 255.0f);
+                g = (uint8_t)clampf(g * (0.95f + 0.8f * value) + rnd_f(&app.rnd) * 110.0f, 0.0f, 255.0f);
+                b = (uint8_t)clampf(b * (1.3f - 0.5f * value) + rnd_f(&app.rnd) * 140.0f, 0.0f, 255.0f);
                 tinted = app_pack(r, g, b, 255);
             }
-            if (((i >> 4) + (int)(app.time * 12.0f)) % 7 == 0) {
+            if (rnd_f(&app.rnd) < 0.22f) {
                 tinted = app_glitch(tinted, i);
             }
-            if (((i + app.frame) & 31) == 0) {
-                uint32_t random_color = app_pack((uint8_t)(clampf(sinf(app.time * 11.0f + i * 0.03f) * 127.0f + 128.0f, 0.0f, 255.0f)), (uint8_t)(clampf(cosf(app.time * 9.0f + i * 0.05f) * 127.0f + 128.0f, 0.0f, 255.0f)), (uint8_t)(clampf(sinf(app.time * 7.0f + i * 0.09f) * 127.0f + 128.0f, 0.0f, 255.0f)), 255);
+            if (rnd_f(&app.rnd) < 0.1f) {
+                uint32_t random_color = app_pack((uint8_t)(clampf(rnd_f(&app.rnd) * 255.0f, 0.0f, 255.0f)), (uint8_t)(clampf(rnd_f(&app.rnd) * 255.0f, 0.0f, 255.0f)), (uint8_t)(clampf(rnd_f(&app.rnd) * 255.0f, 0.0f, 255.0f)), 255);
                 tinted = app_glitch(random_color, i);
             }
             app.canvas[i] = tinted;
-            app.field_prev[i] = value * 0.44f + app.field_prev[i] * 0.34f;
+            app.field_prev[i] = value * (0.3f + rnd_f(&app.rnd) * 0.5f) + app.field_prev[i] * (0.2f + rnd_f(&app.rnd) * 0.5f);
+        }
+        for (int i = 0; i < BACK_N; i++) {
+            if (rnd_f(&app.rnd) < 0.05f) {
+                int x = i % BACK_W;
+                int y = i / BACK_W;
+                int ox = x + (int)(sinf(app.time * 20.0f + y * 0.025f) * 18.0f);
+                int oy = y + (int)(cosf(app.time * 14.0f + x * 0.032f) * 16.0f);
+                if (ox < 0) {
+                    ox += BACK_W;
+                } else if (ox >= BACK_W) {
+                    ox -= BACK_W;
+                }
+                if (oy < 0) {
+                    oy += BACK_H;
+                } else if (oy >= BACK_H) {
+                    oy -= BACK_H;
+                }
+                uint32_t alt = app.canvas[oy * BACK_W + ox];
+                app.canvas[i] = app_glitch(alt, i + (int)app.frame);
+            }
+            if ((i / BACK_W) % 10 == 0 && rnd_f(&app.rnd) < 0.08f) {
+                uint8_t r = (app.canvas[i] >> 24) & 0xFF;
+                uint8_t g = (app.canvas[i] >> 16) & 0xFF;
+                uint8_t b = (app.canvas[i] >> 8) & 0xFF;
+                app.canvas[i] = app_pack(r / 2, g / 2, b / 2, 255);
+            }
+            if (rnd_f(&app.rnd) < 0.02f) {
+                uint8_t r = (app.canvas[i] >> 24) & 0xFF;
+                uint8_t g = (app.canvas[i] >> 16) & 0xFF;
+                uint8_t b = (app.canvas[i] >> 8) & 0xFF;
+                app.canvas[i] = app_pack(b, r, g, 255);
+            }
         }
         gfx_present(&app.gfx, app.canvas, BACK_W, BACK_H);
         app.frame += 1;

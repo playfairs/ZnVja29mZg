@@ -7,8 +7,8 @@
 #include "audio.h"
 #include "sys.h"
 #include "util_math.h"
-#define BACK_W 640
-#define BACK_H 360
+#define BACK_W 960
+#define BACK_H 540
 #define BACK_N (BACK_W * BACK_H)
 #define SYS_MAX 32
 typedef struct s0_t { vec2 orbit[4]; float phase[4]; float speed[4]; } s0_t;

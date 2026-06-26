@@ -21,17 +21,11 @@ static float distortion_curve(float sample, float drive)
 static void audio_callback(void *userdata, SDL_AudioStream *stream, int additional_amount, int total_amount)
 {
     (void)total_amount;
-    static int debug_count = 0;
     if (!userdata) {
         SDL_Log("audio_callback: missing userdata\n");
         return;
     }
     audio_t *audio = userdata;
-    if (debug_count < 10) {
-        SDL_Log("audio_callback[%d]: userdata=%p expected=%p rnd_state=0x%016llx stream=%p add=%d tot=%d\n",
-                debug_count, userdata, (void *)&app.audio, (unsigned long long)audio->rnd.state, (void *)stream, additional_amount, total_amount);
-    }
-    debug_count += 1;
     int frames = additional_amount / sizeof(float);
     if (frames <= 0) {
         return;
@@ -41,15 +35,24 @@ static void audio_callback(void *userdata, SDL_AudioStream *stream, int addition
     }
     float buffer[1024];
     for (int i = 0; i < frames; i++) {
-        float carrier = sinf(audio->phase);
-        float formant = sinf(audio->phase * 0.99f + audio->energy * 3.7f);
-        float noise = (rnd_f(&audio->rnd) * 2.0f - 1.0f) * 0.08f * audio->energy;
-        float raw = carrier * (0.42f + audio->energy * 0.33f) + formant * 0.14f + noise;
-        float shaped = distortion_curve(raw + audio->feedback * 0.26f, 1.0f + audio->energy * 3.2f);
-        audio->feedback = shaped * (0.12f + audio->energy * 0.24f);
-        float level = (0.07f + audio->energy * 0.20f) * (0.8f + 0.2f * cosf(audio->phase * 0.31f));
-        buffer[i] = shaped * level;
-        audio->phase += 2.0f * 3.14159265f * audio->frequency / audio->sample_rate;
+        float carrier = sinf(audio->phase * (0.78f + rnd_f(&audio->rnd) * 0.62f) + rnd_f(&audio->rnd) * 3.4f);
+        float grain = (rnd_f(&audio->rnd) * 2.0f - 1.0f) * (0.18f + rnd_f(&audio->rnd) * 0.34f);
+        float glitch = (rnd_f(&audio->rnd) < 0.14f) ? (rnd_f(&audio->rnd) * 2.0f - 1.0f) * (0.34f + rnd_f(&audio->rnd) * 1.1f) : 0.0f;
+        float pulse = sinf(audio->phase * (0.18f + rnd_f(&audio->rnd) * 0.22f)) * 0.42f + 0.58f;
+        float crunch = floor((grain + glitch + carrier * 0.4f) * (3.8f + rnd_f(&audio->rnd) * 4.2f)) * 0.25f;
+        float raw = crunch * (0.28f + rnd_f(&audio->rnd) * 0.58f) + pulse * 0.12f;
+        float drive = 1.6f + rnd_f(&audio->rnd) * 3.2f + pulse * 0.5f;
+        float shaped = distortion_curve(raw + audio->feedback * 0.16f, drive);
+        audio->feedback = shaped * (0.04f + rnd_f(&audio->rnd) * 0.26f) * (rnd_f(&audio->rnd) < 0.4f ? 1.0f : 0.72f);
+        buffer[i] = shaped * (0.018f + rnd_f(&audio->rnd) * 0.042f + pulse * 0.14f);
+        if (rnd_f(&audio->rnd) < 0.12f) {
+            buffer[i] += (rnd_f(&audio->rnd) * 2.0f - 1.0f) * 0.12f;
+        }
+        if (rnd_f(&audio->rnd) < 0.05f) {
+            buffer[i] = -buffer[i];
+        }
+        float phase_delta = 2.0f * 3.14159265f * (20.0f + rnd_f(&audio->rnd) * 980.0f) / audio->sample_rate;
+        audio->phase += phase_delta;
         if (audio->phase >= 2.0f * 3.14159265f) {
             audio->phase -= 2.0f * 3.14159265f;
         }
@@ -78,14 +81,15 @@ void audio_init(audio_t *audio, const rnd_t *rnd)
         SDL_ResumeAudioStreamDevice(audio->stream);
     }
 }
+
 void audio_update(audio_t *audio, float activity, float dt)
 {
     const float target = clampf_nz(activity, 0.0f, 1.0f);
-    audio->energy = mixf(audio->energy, target, 1.0f - powf(0.18f, dt * 60.0f));
-    float freq_target = 120.0f + target * 720.0f + sinf(audio->phase * 0.014f) * 24.0f;
-    audio->frequency = mixf(audio->frequency, clampf_nz(freq_target, 80.0f, 1600.0f), 0.08f);
-    audio->distortion = mixf(audio->distortion, 0.22f + target * 0.72f, 0.06f);
-    audio->amplitude = mixf(audio->amplitude, 0.06f + target * 0.28f, 0.07f);
+    audio->energy = clampf_nz(target + (rnd_f(&audio->rnd) - 0.5f) * 0.8f, 0.0f, 1.0f);
+    audio->frequency = clampf_nz(60.0f + rnd_f(&audio->rnd) * 1740.0f, 40.0f, 1900.0f);
+    audio->distortion = clampf_nz(0.18f + rnd_f(&audio->rnd) * 2.2f, 0.18f, 3.1f);
+    audio->amplitude = clampf_nz(0.02f + rnd_f(&audio->rnd) * 0.5f, 0.02f, 1.0f);
+    audio->feedback = clampf_nz(rnd_f(&audio->rnd) * 0.98f, 0.0f, 1.0f);
 }
 float audio_energy(const audio_t *audio)
 {
