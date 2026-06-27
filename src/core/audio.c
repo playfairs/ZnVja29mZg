@@ -1,6 +1,4 @@
-#include "app.h"
 #include "audio.h"
-#include "util_math.h"
 #include <math.h>
 #include <string.h>
 static float clampf_nz(float value, float min, float max)
