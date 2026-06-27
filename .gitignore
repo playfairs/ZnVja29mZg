@@ -3,3 +3,4 @@ _MACOSX
 *.db
 [dD]esktop.ini
 result
+.cache
