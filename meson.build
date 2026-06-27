@@ -1,4 +1,4 @@
-project('fuckoff', 'c')
+project('t8forge', 'c')
 
 cc = meson.get_compiler('c')
 sdl_dep = dependency('sdl3')
@@ -24,7 +24,7 @@ find_sources = run_command(
 sources = find_sources.stdout().strip().split('\n')
 include = include_directories('include')
 
-executable('fuckoff', sources,
+executable('t8forge', sources,
   c_args: [],
   link_args: [],
   dependencies: [sdl_dep],

@@ -5,7 +5,7 @@ int gfx_init(gfx_t *gfx, int w, int h)
 {
     gfx->back_w = w;
     gfx->back_h = h;
-    if (!SDL_CreateWindowAndRenderer("ZnVja29mZg", w * 2, h * 2, SDL_WINDOW_BORDERLESS, &gfx->window, &gfx->renderer)) {
+    if (!SDL_CreateWindowAndRenderer("T8Forge", w * 2, h * 2, SDL_WINDOW_BORDERLESS, &gfx->window, &gfx->renderer)) {
         return 0;
     }
     gfx->texture = SDL_CreateTexture(gfx->renderer, SDL_PIXELFORMAT_ABGR8888, SDL_TEXTUREACCESS_STREAMING, w, h);

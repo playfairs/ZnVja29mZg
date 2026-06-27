@@ -1,5 +1,5 @@
 {
-  description = "fuckoff SDL3 procedural visuals";
+  description = "T8Forge Audio and Visuals Engine";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
@@ -10,7 +10,7 @@
         pkgs = import nixpkgs { inherit system; };
       in {
         packages.default = pkgs.stdenv.mkDerivation {
-          pname = "fuckoff";
+          pname = "t8forge";
           version = "0.1";
           src = ./.;
           buildInputs = with pkgs; [ meson ninja  python3 ];
