@@ -1,5 +1,5 @@
 {
-  description = "ZnVja29mZg SDL3 procedural visuals";
+  description = "fuckoff SDL3 procedural visuals";
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     flake-utils.url = "github:numtide/flake-utils";
@@ -10,7 +10,7 @@
         pkgs = import nixpkgs { inherit system; };
       in {
         packages.default = pkgs.stdenv.mkDerivation {
-          pname = "znvja29mzg";
+          pname = "fuckoff";
           version = "0.1";
           src = ./.;
           buildInputs = with pkgs; [ meson ninja  python3 ];
@@ -23,9 +23,6 @@
             pkg-config
             sdl3
           ];
-          shellHook = ''
-            echo "fuckoff"
-          '';
         };
       });
 }
